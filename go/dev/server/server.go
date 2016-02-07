@@ -23,6 +23,11 @@ func (s *server) GetInfo(_ context.Context, _ *api.Nil) (*api.Info, error) {
 	return tenet.APIInfo(i), nil
 }
 
+func (s *server) SetGlobals(_ context.Context, opts *api.GlobalOptions) (*api.Nil, error) {
+	s.tenet.(tenet.BaseTenet).SetGlobalOptions(opts)
+	return &api.Nil{}, nil
+}
+
 // Options are passed in via .lingo or on the CLI.
 func (s *server) Configure(_ context.Context, cfg *api.Config) (*api.Nil, error) {
 	s.tenet.(tenet.BaseTenet).MixinConfigOptions(cfg.Options)

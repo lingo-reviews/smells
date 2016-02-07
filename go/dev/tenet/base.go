@@ -30,6 +30,8 @@ type Base struct {
 	// tmpdir is the dir for tenets to work in.
 	tmpdir string
 
+	options api.GlobalOptions
+
 	astVisitors  astVisitors
 	lineVisitors lineVisitors
 
@@ -122,6 +124,43 @@ func (b *Base) MixinConfigOptions(opts []*api.Option) error {
 		}
 	}
 	return nil
+}
+
+func (b *Base) SetGlobalOptions(opts *api.GlobalOptions) error {
+	b.options = *opts
+	if b.options.FindAll {
+		b.enableFindAll()
+	}
+	return nil
+}
+
+// enableFindAll will ensure that all registered issues have a default comment
+// so that tenets will continue to search the entire codebase for issues.
+func (b *Base) enableFindAll() {
+issues:
+	for idx, i := range b.registeredIssues {
+		// These are used to find the 'last' comment to be seen to use as the new default
+		maxLevel := 0
+		maxCdx := 0
+		for cdx, c := range i.comments {
+			contextLevel := 0
+			for _, cc := range c.commentContexts {
+				if cc == DefaultComment {
+					continue issues
+				}
+				contextLevel += int(cc)
+			}
+			if contextLevel > maxLevel {
+				maxLevel = contextLevel
+				maxCdx = cdx
+			}
+		}
+		// No default comment found - use the comment from last context
+		b.registeredIssues[idx].comments[maxCdx].commentContexts = append(
+			b.registeredIssues[idx].comments[maxCdx].commentContexts,
+			DefaultComment,
+		)
+	}
 }
 
 func (b *Base) setOpt(opt *api.Option) error {

@@ -136,6 +136,7 @@ type BaseTenet interface {
 	Init()
 	NewReview() *review
 	Info() *Info
+	SetGlobalOptions(opts *api.GlobalOptions) error
 	MixinConfigOptions(opts []*api.Option) error
 	SendError(error)
 	Errors() chan error
