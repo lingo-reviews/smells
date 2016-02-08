@@ -9,6 +9,7 @@ It is generated from these files:
 	apiV0.0.0.proto
 
 It has these top-level messages:
+	GlobalOptions
 	Nil
 	File
 	Issue
@@ -52,6 +53,15 @@ var SchemaVersionVersion_value = map[string]int32{
 func (x SchemaVersionVersion) String() string {
 	return proto.EnumName(SchemaVersionVersion_name, int32(x))
 }
+
+// Options available for all tenets that affect the entire review
+type GlobalOptions struct {
+	FindAll bool `protobuf:"varint,1,opt,name=findAll" json:"findAll,omitempty"`
+}
+
+func (m *GlobalOptions) Reset()         { *m = GlobalOptions{} }
+func (m *GlobalOptions) String() string { return proto.CompactTextString(m) }
+func (*GlobalOptions) ProtoMessage()    {}
 
 // TODO(waigani) This is a work around. How do we call methods without args?
 type Nil struct {
@@ -197,6 +207,7 @@ func (m *SchemaVersion) String() string { return proto.CompactTextString(m) }
 func (*SchemaVersion) ProtoMessage()    {}
 
 func init() {
+	proto.RegisterType((*GlobalOptions)(nil), "api.GlobalOptions")
 	proto.RegisterType((*Nil)(nil), "api.Nil")
 	proto.RegisterType((*File)(nil), "api.File")
 	proto.RegisterType((*Issue)(nil), "api.Issue")
@@ -223,6 +234,10 @@ type TenetClient interface {
 	// Returns the version of the api schema. // TODO(waigani) ideally, we'd
 	// set a string literal here.
 	APIVersion(ctx context.Context, in *Nil, opts ...grpc.CallOption) (*SchemaVersion, error)
+	// Set global options from the lingo CLI. As opposed to Configure below,
+	// these options are not forwarded to tenet authors but rather change
+	// the way the lingo CLI and tenets interact.
+	SetGlobals(ctx context.Context, in *GlobalOptions, opts ...grpc.CallOption) (*Nil, error)
 	// Configure the tenet with user defined options. These come either
 	// from .lingo or passed in on the CLI.
 	Configure(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Nil, error)
@@ -285,6 +300,15 @@ func (c *tenetClient) APIVersion(ctx context.Context, in *Nil, opts ...grpc.Call
 	return out, nil
 }
 
+func (c *tenetClient) SetGlobals(ctx context.Context, in *GlobalOptions, opts ...grpc.CallOption) (*Nil, error) {
+	out := new(Nil)
+	err := grpc.Invoke(ctx, "/api.Tenet/SetGlobals", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *tenetClient) Configure(ctx context.Context, in *Config, opts ...grpc.CallOption) (*Nil, error) {
 	out := new(Nil)
 	err := grpc.Invoke(ctx, "/api.Tenet/Configure", in, out, c.cc, opts...)
@@ -304,6 +328,10 @@ type TenetServer interface {
 	// Returns the version of the api schema. // TODO(waigani) ideally, we'd
 	// set a string literal here.
 	APIVersion(context.Context, *Nil) (*SchemaVersion, error)
+	// Set global options from the lingo CLI. As opposed to Configure below,
+	// these options are not forwarded to tenet authors but rather change
+	// the way the lingo CLI and tenets interact.
+	SetGlobals(context.Context, *GlobalOptions) (*Nil, error)
 	// Configure the tenet with user defined options. These come either
 	// from .lingo or passed in on the CLI.
 	Configure(context.Context, *Config) (*Nil, error)
@@ -363,6 +391,18 @@ func _Tenet_APIVersion_Handler(srv interface{}, ctx context.Context, dec func(in
 	return out, nil
 }
 
+func _Tenet_SetGlobals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(GlobalOptions)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(TenetServer).SetGlobals(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func _Tenet_Configure_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(Config)
 	if err := dec(in); err != nil {
@@ -386,6 +426,10 @@ var _Tenet_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "APIVersion",
 			Handler:    _Tenet_APIVersion_Handler,
+		},
+		{
+			MethodName: "SetGlobals",
+			Handler:    _Tenet_SetGlobals_Handler,
 		},
 		{
 			MethodName: "Configure",
